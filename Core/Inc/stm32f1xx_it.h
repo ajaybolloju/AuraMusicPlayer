@@ -28,6 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32f1xx_hal.h"
 
 /* USER CODE END Includes */
 
@@ -57,6 +58,7 @@ void DebugMon_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
 void USART1_IRQHandler(void);
+void USART3_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 void EXTI0_IRQHandler(void);
 void EXTI1_IRQHandler(void);

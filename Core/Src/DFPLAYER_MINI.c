@@ -7,7 +7,8 @@
 
 
 #include "stm32f1xx_hal.h"
-#include "stdio.h"
+#include <stdio.h>
+#include <string.h>
 
 extern UART_HandleTypeDef huart1;
 #define DF_UART &huart1
@@ -40,15 +41,27 @@ static uint8_t VolIncButton = 0;
 static uint8_t VolDecButton = 0;
 static uint8_t StartPauseButton = 0;
 static uint8_t MuteButton = 0;
+static uint8_t CurrTrack = 0;
+static uint8_t PrevTrack = 0;
+
+uint8_t aRxBuffer = 0;
+uint8_t g_buff[200] = {0};
+uint8_t RxBufCntr = 0;
+uint8_t RxBufWaitCntr = 0;
+
+uint8_t DF_CurrentTrackCMD (void);
+void DF_ParseResponse (void);
 
 
 void SetNextButtonStatus(void)
 {
+	CurrTrack++;
 	NextButton = 1;
 }
 
 void SetPrevButtonStatus(void)
 {
+	CurrTrack--;
 	PrevButton = 1;
 }
 
@@ -132,6 +145,59 @@ uint8_t GetMuteButtonStatus(void)
 	return 0;
 }
 
+void HandleLEDs(void)
+{
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+	  HAL_Delay(1000);
+	  switch(DF_CurrentTrackCMD())
+	  {
+	    case 1:
+	    {
+	  	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+	    }
+	    break;
+	    case 2:
+	    {
+	    	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
+	    }
+	    break;
+	    case 3:
+	    {
+		  	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_SET);
+	    }
+	    break;
+	    case 4:
+	    {
+		  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+	    }
+	    break;
+	    case 5:
+	    {
+		  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+	    }
+	    break;
+	    case 6:
+	    {
+//		  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+	    }
+	    break;
+	    case 7:
+	    {
+//		  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
+	    }
+	    break;
+	    default:
+	    {
+		  	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+	    }
+	    break;
+	  }
+}
+
 void Send_cmd (uint8_t cmd, uint8_t Parameter1, uint8_t Parameter2)
 {
 	uint16_t Checksum = Version + Cmd_Len + cmd + Feedback + Parameter1 + Parameter2;
@@ -139,6 +205,9 @@ void Send_cmd (uint8_t cmd, uint8_t Parameter1, uint8_t Parameter2)
 
 	uint8_t CmdSequence[10] = { Start_Byte, Version, Cmd_Len, cmd, Feedback, Parameter1, Parameter2, (Checksum>>8)&0x00ff, (Checksum&0x00ff), End_Byte};
 
+	printf("\n Tx: 0x%X,0x%X,0x%X,0x%X,0x%X,0x%X,0x%X,0x%X,0x%X,0x%X \n",
+			CmdSequence[0],CmdSequence[1],CmdSequence[2],CmdSequence[3],CmdSequence[4],
+			CmdSequence[5],CmdSequence[6],CmdSequence[7],CmdSequence[8],CmdSequence[9]);
 	if(HAL_UART_Transmit(DF_UART, CmdSequence, 10, HAL_MAX_DELAY) != HAL_OK)
 	{
 		return;
@@ -148,6 +217,9 @@ void Send_cmd (uint8_t cmd, uint8_t Parameter1, uint8_t Parameter2)
 void DF_PlayFromStart(void)
 {
   Send_cmd(0x03,0x00,0x01);
+  CurrTrack = 1;
+  PrevTrack = 1;
+  HandleLEDs();
   HAL_Delay(200);
 }
 
@@ -196,24 +268,132 @@ void DF_VolDec (void)
 	HAL_Delay(200);
 }
 
-//void DF_VolMute (void)
-//{
-//	Send_cmd(0x06, 0, 0);
-//	HAL_Delay(200);
-//}
+uint8_t DF_CurrentTrackCMD (void)
+{
+	static uint8_t TrackState = 0;
+	switch(TrackState)
+	{
+		case 0:
+		{
+			if(CurrTrack == 0)
+			{
+				RxBufCntr = 0;
+				Send_cmd(0x4B, 0, 0);
+				HAL_Delay(200);
+			}
+			TrackState = 1;
+		}
+		break;
+		case 1:
+		{
+			if(CurrTrack != 0)
+			{
+				if(CurrTrack > 7)
+				{
+					CurrTrack = 1;
+				}
+				return CurrTrack;
+			}
+			else if(RxBufWaitCntr > 4)
+			{
+				RxBufWaitCntr = 0;
+				TrackState = 0;
+				if(CurrTrack != 0)
+				{
+					return CurrTrack;
+				}
+			}
+		}
+		break;
+	}
+	return CurrTrack;
+}
+
+void DF_ParseResponse (void)
+{
+	static uint8_t TrackState = 0;
+	switch(TrackState)
+	{
+		case 0:
+		{
+			if(RxBufCntr == 1)
+			{
+				RxBufWaitCntr = 0;
+				TrackState = 1;
+			}
+		}
+		break;
+		case 1:
+		{
+			if((RxBufCntr >= 10) || (RxBufWaitCntr > 2))
+			{
+				RxBufWaitCntr = 0;
+				TrackState = 2;
+			}
+		}
+		break;
+		case 2:
+		{
+			if(RxBufCntr >= 10)
+			{
+				if((g_buff[0] == Start_Byte)&&(g_buff[9] == End_Byte))
+				{
+					if((g_buff[3] == 0x4B) && (g_buff[6] != 0x00)) //|| (g_buff[3] == 0x41))
+					{
+						CurrTrack = g_buff[6];
+					}
+					else if(g_buff[3] == 0x3D)
+					{
+						PrevTrack = g_buff[6];
+						CurrTrack = PrevTrack;
+						if(PrevTrack == 7)
+						{
+							DF_PlayFromStart();
+						}
+						else
+						{
+							SetNextButtonStatus();
+						}
+					}
+				}
+				TrackState = 0;
+				RxBufCntr = 0;
+				memset(g_buff,0,sizeof(g_buff));
+			}
+			else if(RxBufWaitCntr > 10)
+			{
+				RxBufWaitCntr = 0;
+				if(RxBufCntr >= 10)
+				{
+					TrackState = 2;
+				}
+				else
+				{
+					TrackState = 0;
+					RxBufCntr = 0;
+					memset(g_buff,0,sizeof(g_buff));
+				}
+			}
+		}
+		break;
+	}
+}
 
 void Check_Key (void)
 {
+	DF_ParseResponse();
 	if (GetNextButtonStatus())
 	{
 //		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 		DF_Next();
+		HandleLEDs();
 	}
 
 	if (GetPrevButtonStatus())
 	{
 //		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 		DF_Previous();
+		HandleLEDs();
 	}
 
 	if (GetVolIncButtonStatus())
@@ -231,11 +411,13 @@ void Check_Key (void)
 	if (GetStartPauseButtonStatus())
 	{
 //		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+		HandleLEDs();
 		if (isplaying)
 		{
 			ispause = 1;
 			isplaying = 0;
 			DF_Pause();
+//			DF_CurrentTrackCMD();
 		}
 
 		else if (ispause)

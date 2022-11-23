@@ -8,6 +8,10 @@
 #ifndef INC_DFPLAYER_MINI_H_
 #define INC_DFPLAYER_MINI_H_
 
+extern uint8_t aRxBuffer;
+extern uint8_t g_buff[200];
+extern uint8_t RxBufCntr;
+extern uint8_t RxBufWaitCntr;
 
 void Send_cmd (uint8_t cmd, uint8_t Parameter1, uint8_t Parameter2);
 void DF_PlayFromStart(void);

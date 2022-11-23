@@ -29,10 +29,10 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f1xx_hal.h"
-
+#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#define APP_DEBUG_STR(...) printf(__VA_ARGS__)
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
