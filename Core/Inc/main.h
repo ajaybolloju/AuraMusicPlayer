@@ -33,6 +33,25 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #define APP_DEBUG_STR(...) printf(__VA_ARGS__)
+
+#define LED_1_Pin GPIO_PIN_9
+#define LED_2_Pin GPIO_PIN_8
+#define LED_3_Pin GPIO_PIN_7
+#define LED_4_Pin GPIO_PIN_6
+#define LED_5_Pin GPIO_PIN_5
+#define LED_6_Pin GPIO_PIN_4
+#define LED_7_Pin GPIO_PIN_3
+#define LED_GPIO GPIOB
+
+#define IR_Pin GPIO_PIN_5
+#define IR_GPIO GPIOA
+
+extern uint8_t Pin0Cntr;
+extern uint8_t Pin1Cntr;
+extern uint8_t Pin2Cntr;
+extern uint8_t Pin3Cntr;
+extern uint8_t Pin4Cntr;
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

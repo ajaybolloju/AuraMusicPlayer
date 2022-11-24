@@ -9,6 +9,9 @@
 #include "stm32f1xx_hal.h"
 #include <stdio.h>
 #include <string.h>
+#include "main.h"
+#include "IRremote.h"
+
 
 extern UART_HandleTypeDef huart1;
 #define DF_UART &huart1
@@ -43,6 +46,8 @@ static uint8_t StartPauseButton = 0;
 static uint8_t MuteButton = 0;
 static uint8_t CurrTrack = 0;
 static uint8_t PrevTrack = 0;
+static uint8_t SpecificTrack = 0;
+static uint8_t SpecificTrackBtn = 0;
 
 uint8_t aRxBuffer = 0;
 uint8_t g_buff[200] = {0};
@@ -51,7 +56,6 @@ uint8_t RxBufWaitCntr = 0;
 
 uint8_t DF_CurrentTrackCMD (void);
 void DF_ParseResponse (void);
-
 
 void SetNextButtonStatus(void)
 {
@@ -78,6 +82,12 @@ void SetVolDecButtonStatus(void)
 void SetStartPauseButtonStatus(void)
 {
 	StartPauseButton = 1;
+}
+
+void SetSpecificTrack(uint8_t Track_Idx)
+{
+	SpecificTrackBtn = 1;
+	SpecificTrack = Track_Idx;
 }
 
 //void SetMuteButtonStatus(void)
@@ -145,57 +155,162 @@ uint8_t GetMuteButtonStatus(void)
 	return 0;
 }
 
+uint8_t GetSpecificTrackButtonStatus(void)
+{
+	if(SpecificTrackBtn)
+	{
+		SpecificTrackBtn = 0;
+		return 1;
+	}
+	return 0;
+}
+
+uint8_t GetSpecifcTrackIndex(void)
+{
+	return SpecificTrack;
+}
+
 void HandleLEDs(void)
 {
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(LED_GPIO, LED_1_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(LED_GPIO, LED_2_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(LED_GPIO, LED_3_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(LED_GPIO, LED_4_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(LED_GPIO, LED_5_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(LED_GPIO, LED_6_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(LED_GPIO, LED_7_Pin, GPIO_PIN_RESET);
 	  HAL_Delay(1000);
 	  switch(DF_CurrentTrackCMD())
 	  {
 	    case 1:
 	    {
-	  	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+	  	  HAL_GPIO_WritePin(LED_GPIO, LED_1_Pin, GPIO_PIN_SET);
 	    }
 	    break;
 	    case 2:
 	    {
-	    	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
+	  	  HAL_GPIO_WritePin(LED_GPIO, LED_2_Pin, GPIO_PIN_SET);
 	    }
 	    break;
 	    case 3:
 	    {
-		  	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_SET);
+	  	  HAL_GPIO_WritePin(LED_GPIO, LED_3_Pin, GPIO_PIN_SET);
 	    }
 	    break;
 	    case 4:
 	    {
-		  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+	  	  HAL_GPIO_WritePin(LED_GPIO, LED_4_Pin, GPIO_PIN_SET);
 	    }
 	    break;
 	    case 5:
 	    {
-		  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+	  	  HAL_GPIO_WritePin(LED_GPIO, LED_5_Pin, GPIO_PIN_SET);
 	    }
 	    break;
 	    case 6:
 	    {
-//		  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+	  	  HAL_GPIO_WritePin(LED_GPIO, LED_6_Pin, GPIO_PIN_SET);
 	    }
 	    break;
 	    case 7:
 	    {
-//		  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
+	  	  HAL_GPIO_WritePin(LED_GPIO, LED_7_Pin, GPIO_PIN_SET);
 	    }
 	    break;
 	    default:
 	    {
-		  	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+		  	  HAL_GPIO_WritePin(LED_GPIO, LED_1_Pin, GPIO_PIN_SET);
 	    }
 	    break;
 	  }
+}
+
+void Read_RemoteInput(uint32_t IR_Rxd_Cmd)
+{
+	switch(IR_Rxd_Cmd)
+	{
+		case IR_Power:
+		{
+			printf("\n Pwr");
+			SetStartPauseButtonStatus();
+		}
+		break;
+		case IR_PausePlay:
+		{
+			printf("\n Pause play");
+			SetStartPauseButtonStatus();
+		}
+		break;
+		case IR_Backward:
+		{
+			printf("\n Backward");
+			SetPrevButtonStatus();
+		}
+		break;
+		case IR_Farward:
+		{
+			printf("\n farward");
+			SetNextButtonStatus();
+		}
+		break;
+		case IR_Vol_Dec:
+		{
+			printf("\n Vol Dec");
+			SetVolDecButtonStatus();
+		}
+		break;
+		case IR_Vol_Inc:
+		{
+			printf("\n Vol Inc");
+			SetVolIncButtonStatus();
+		}
+		break;
+		case IR_One:
+		{
+			printf("\n One");
+			SetSpecificTrack(1);
+		}
+		break;
+		case IR_Two:
+		{
+			printf("\n two");
+			SetSpecificTrack(2);
+		}
+		break;
+		case IR_Three:
+		{
+			printf("\n Three");
+			SetSpecificTrack(3);
+		}
+		break;
+		case IR_Four:
+		{
+			printf("\n four");
+			SetSpecificTrack(4);
+		}
+		break;
+		case IR_Five:
+		{
+			printf("\n five");
+			SetSpecificTrack(5);
+		}
+		break;
+		case IR_Six:
+		{
+			printf("\n six");
+			SetSpecificTrack(6);
+		}
+		break;
+		case IR_Seven:
+		{
+			printf("\n seven");
+			SetSpecificTrack(7);
+		}
+		break;
+		default:
+			break;
+	}
+	IR_Rxd_Cmd = 0;
 }
 
 void Send_cmd (uint8_t cmd, uint8_t Parameter1, uint8_t Parameter2)
@@ -265,6 +380,12 @@ void DF_VolInc (void)
 void DF_VolDec (void)
 {
 	Send_cmd(0x05, 0, 0);
+	HAL_Delay(200);
+}
+
+void DF_SpecifcTrack (void)
+{
+	Send_cmd(0x03,0x00,GetSpecifcTrackIndex());
 	HAL_Delay(200);
 }
 
@@ -406,6 +527,12 @@ void Check_Key (void)
 	{
 //		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 		DF_VolDec();
+	}
+
+	if (GetSpecificTrackButtonStatus())
+	{
+//		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+		DF_SpecifcTrack();
 	}
 
 	if (GetStartPauseButtonStatus())

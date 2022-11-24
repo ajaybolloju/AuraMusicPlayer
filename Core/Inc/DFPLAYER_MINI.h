@@ -27,5 +27,6 @@ void SetPrevButtonStatus(void);
 void SetStartPauseButtonStatus(void);
 void SetVolIncButtonStatus(void);
 void SetVolDecButtonStatus(void);
+void Read_RemoteInput(uint32_t IR_Rxd_Cmd);
 
 #endif /* INC_DFPLAYER_MINI_H_ */

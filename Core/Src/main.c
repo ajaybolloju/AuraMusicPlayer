@@ -19,12 +19,16 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <string.h>
+//#include "IRremote.h"
+//#include "IRremoteInt.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
 #include "DFPLAYER_MINI.h"
-
+#include "IRremote.h"
+//#include "dwt_stm32_delay.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,7 +42,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+extern decode_results results;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -47,6 +51,7 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim4;
 
 /* USER CODE END PV */
 
@@ -57,10 +62,16 @@ static void MX_USART1_UART_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 static void MX_TIM2_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint8_t Pin0Cntr = 0;
+uint8_t Pin1Cntr = 0;
+uint8_t Pin2Cntr = 0;
+uint8_t Pin3Cntr = 0;
+uint8_t Pin4Cntr = 0;
 
 #ifdef __GNUC__
 /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
@@ -103,7 +114,8 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART3_UART_Init();
   MX_TIM2_Init();
-  /* USER CODE BEGIN 2 */
+  MX_TIM4_Init();
+/* USER CODE BEGIN 2 */
 
   DF_Init(30);
 
@@ -112,16 +124,30 @@ int main(void)
   HAL_UART_Receive_IT(&huart1, (uint8_t *) &aRxBuffer, 1);
 //  HAL_UART_Receive_IT(&huart3, (uint8_t *) &aRxBuffer, 1);
 
+//	IRrecv_IRrecvInit(IR_GPIO, IR_Pin);
+//	IRrecv_enableIRIn(); // Start the receiver
+  my_enableIRIn(); // инициализация
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+//  uint32_t data = 0;
   while (1)
   {
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
-
+		if(my_decode(&results))
+		{
+//			snprintf(trans_str, 64, "Cod: HEX %p DEC %lu\n", (void*)results.value, results.value);
+//			HAL_UART_Transmit(&huart1, (uint8_t*)trans_str, strlen(trans_str), 100);
+			printf("\n Cod: HEX %x DEC %lu \n",results.value, results.value);
+			HAL_Delay(300);
+			my_resume();
+		}
+		Read_RemoteInput(results.value);
+		results.value = 0;
 //	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13,GPIO_PIN_SET);
 //	  HAL_Delay(1000);
 //	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13,GPIO_PIN_RESET);
@@ -129,6 +155,13 @@ int main(void)
   }
   /* USER CODE END 3 */
 }
+//
+//void IRrecv_DataReadyCallback(unsigned long data)
+//{
+//	IRsend_sendSony(0xF00, 12);
+//	HAL_Delay(10000); //1000ms delay
+//	IRrecv_resume(); // Receive the next value
+//}
 
 /**
   * @brief System Clock Configuration
@@ -289,11 +322,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO, LED_1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO, LED_2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO, LED_3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO, LED_4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO, LED_5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO, LED_6_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO, LED_7_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -309,19 +344,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA5 PA6 PA7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*Configure GPIO pin : PA5 */   //PA6 PA7
+  GPIO_InitStruct.Pin = IR_Pin;  //|GPIO_PIN_6|GPIO_PIN_7
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(IR_GPIO, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB0 PB1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Pin = LED_1_Pin|LED_2_Pin|LED_3_Pin|LED_4_Pin|LED_5_Pin|LED_6_Pin|LED_7_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(LED_GPIO, &GPIO_InitStruct);
 
   /* USER CODE BEGIN 4 */
   /* EXTI interrupt init*/
@@ -373,27 +407,66 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-
 }
 
-uint8_t Pin0Cntr = 0;
-uint8_t Pin1Cntr = 0;
-uint8_t Pin2Cntr = 0;
-uint8_t Pin3Cntr = 0;
-uint8_t Pin4Cntr = 0;
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
 {
-  if (htim->Instance == TIM2)
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 71;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 49;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
   {
-	  Pin0Cntr++;
-	  Pin1Cntr++;
-	  Pin2Cntr++;
-	  Pin3Cntr++;
-	  Pin4Cntr++;
-	  RxBufWaitCntr++;
+    Error_Handler();
   }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
 }
+//
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+//{
+//  if (htim->Instance == TIM2)
+//  {
+//	  Pin0Cntr++;
+//	  Pin1Cntr++;
+//	  Pin2Cntr++;
+//	  Pin3Cntr++;
+//	  Pin4Cntr++;
+//	  RxBufWaitCntr++;
+//  }
+//}
 
 /**
    @brief EXTI line detection callbacks
@@ -402,6 +475,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+//	if(GPIO_Pin == IR_Pin)
+//	{
+//		if (HAL_GPIO_ReadPin(IR_GPIO, IR_Pin)
+//				         == GPIO_PIN_RESET)
+//		{
+//			printf("\n Rxd IR: %08x \n",receive_data());
+//		}
+//	}
 	  if (GPIO_Pin == GPIO_PIN_0)
 	  {
 		    if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)
